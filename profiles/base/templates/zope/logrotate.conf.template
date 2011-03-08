@@ -1,0 +1,5 @@
+${buildout:directory}/var/log/instance*.log {
+    postrotate
+        ${buildout:directory}/bin/instance restart
+    endscript
+}

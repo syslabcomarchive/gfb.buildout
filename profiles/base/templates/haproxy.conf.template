@@ -1,0 +1,212 @@
+# This is the default haproxy load balancing configuration. It will
+# load balance our ZEO clients.
+#
+# Note that haproxy.cfg is generated from templates/haproxy.cfg.template.
+#
+
+global
+  log ${hosts:syslog} local6
+  
+  # We manage this with supervisor
+  #  user ${users:balancer}
+  
+  maxconn  1024
+  ulimit-n 65536
+  
+  nbproc 1
+  
+  # Run in non-daemon mode so that supervisor can keep control
+  #  daemon
+
+defaults
+  # log global
+  mode http
+
+  # The zope instances have maxconn 1, and it is important that
+  # unused/idle connections are closed as soon as possible.
+  option httpclose
+
+  # Remove requests from the queue if people press stop button
+  option abortonclose
+
+  #  option httplog
+  #  option dontlognull
+  retries 3
+  option redispatch
+  monitor-uri /haproxy-ping
+
+  timeout connect 7s
+  timeout queue   15s
+  timeout client  300s
+  timeout server  300s
+
+  stats enable
+  stats uri /_balancer_status_
+  stats refresh 5s
+  stats realm Haproxy\ statistics
+
+frontend zopecluster
+  bind :${ports:balancer}
+
+    # CAVE: acl lines must not get too long. But we can define the same acl name 
+    # several times. Make sure it works after editing by starting haproxy manually!
+
+    # Botlist
+  acl bots hdr(User-Agent) -i Jakarta Java oBot Xerka WebBot AdsBot-Google 3GSE LRAKN VoilaBot MEGAUPLOAD proximic.com LinkCheck BpEngine/Nutch FAST MetaWeb Crawler RPT-HTTPClient voyager Jyxobot bot/1.0 ZSEBOT Xenu Googlebot msnbot msnbot-media Yahoo! Slurp TurnitinBot Seekbot crawler Yeti Twiceler holmes sogou CazoodleBot heritrix Webbot Charlotte Twiceler Spider crawler Teoma bilgi YahooSeeker Nutch AltaVista www.fi crawler LinkLint-checkonly Gigabot WebAlta  GreatNews GrubNG ia_archiver WikioFeedBot
+  acl bots hdr(User-Agent) -i AllResearch CFNetwork wwwster Scooter Encore Xu LinkWalker TweakMASTER asterias psbot Baiduspider INGRID Yandex TurnitinBot SeznamBot ichiro FAST Enterprise flyindex.net WebDAV-MiniRedir holmes eZ publish Link Validator VoilaBot Slurp IssueCrawler DTS Agent ZanranCrawler ConveraCrawler
+
+ 
+    # Blocklist
+    acl  blocklist hdr_reg(User-Agent) -i ^Cn$
+    acl  blocklist hdr_reg(User-Agent) -i autonomy:
+    acl  blocklist hdr_reg(User-Agent) -i ^Mozilla/4.0$
+    acl  blocklist hdr_reg(User-Agent) -i ^Wget/1.9.1$
+    acl  blocklist hdr_reg(User-Agent) -i ^Wget/1.10.2$
+    acl  blocklist hdr_reg(User-Agent) -i libwww-perl
+
+
+    # Whitelist
+    acl whitelist hdr_reg(User-Agent) -i ^User-Agent: Mozilla/4.0
+    acl whitelist hdr_reg(User-Agent) -i ^Mozilla/4.0
+    acl whitelist hdr_reg(User-Agent) -i ^Mozilla/5.0
+    acl whitelist hdr_reg(User-Agent) -i ^Opera
+    acl whitelist hdr_reg(User-Agent) -i ^LinkChecker
+    acl whitelist hdr_reg(User-Agent) -i ^User-Agent_Carsa_oshatest
+    acl whitelist hdr_reg(User-Agent) -i iPhone
+    acl whitelist hdr_reg(User-Agent) -i ApacheBench
+    acl whitelist hdr_reg(User-Agent) -i Bot/LMS
+    acl whitelist hdr_reg(User-Agent) -i Shockwave Flash
+    acl whitelist hdr_reg(User-Agent) -i Adobe Flash Player
+
+    # Cookie acl
+    acl auth_user hdr_sub(Cookie) -i __ac
+
+  block if blocklist
+
+  # User backends for testing
+  use_backend bot_servers_test if bots 
+  use_backend auth_zopeservers_test if whitelist auth_user  
+  use_backend anon_zopeservers_test if whitelist !auth_user
+  
+  default_backend quarantine_test
+
+  # User backends for production
+#  use_backend bot_servers if bots
+#  use_backend auth_zopeservers if whitelist auth_user  
+#  use_backend anon_zopeservers if whitelist !auth_user
+#  default_backend quarantine
+
+  log ${hosts:syslog} local6
+
+
+# Frontend Distribution between GranVia33 and GranVia35
+#             Gran Via 33            Gran Via 35
+# ---------------------------------------------------
+# Unknown  | Deimos 1 (1 FrEnd)  | Deimos 4 (1 FrEnd)|
+# 2 FrEnds |                     |                   |
+# ----------------------------------------------------
+# Human    | Deimos 1 (3 FrEnd)  | Deimos 4 (3 FrEnd)|
+# 14 FrEnds| Deimos 2 (4 FrEnd)  | Deimos 5 (4 FrEnd)|
+#         |                     |                   |
+# ----------------------------------------------------
+# Bots     | Deimos 3 (4 FrEnd)  | Deimos 6 (4 FrEnd)|
+# 8 FrEnds |                     |                   |
+# ----------------------------------------------------
+# Editors  | Deimos 7 (8 FrEnd)  |                   |
+# 8 FrEnds |                     |                   |
+# ---------------------------------------------------- 
+
+backend bot_servers
+	balance	leastconn
+        option httpchk GET /
+
+	server deimos3.1 10.0.0.53:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos3.2 10.0.0.53:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos3.3 10.0.0.53:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos3.4 10.0.0.53:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	server deimos6.1 10.0.0.56:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos6.2 10.0.0.56:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos6.3 10.0.0.56:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos6.4 10.0.0.56:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	srvtimeout 120s
+
+backend bot_servers_test
+	balance	leastconn
+        option httpchk GET /
+
+	server bot1 ldeimos1:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	srvtimeout 120s
+
+backend anon_zopeservers_test
+	balance	leastconn
+        option httpchk GET /
+
+	server anon1 ldeimos1:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	srvtimeout 120s
+
+backend anon_zopeservers
+	balance	leastconn
+        option httpchk GET /
+
+	# server deimos1.1 is quarantine frontend 
+	server deimos1.2 10.0.0.51:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos1.3 10.0.0.51:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos1.4 10.0.0.51:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	server deimos2.1 10.0.0.52:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos2.2 10.0.0.52:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos2.3 10.0.0.52:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos2.4 10.0.0.52:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	# server deimos4.1 is quarantine frontend 
+	server deimos4.2 10.0.0.54:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos4.3 10.0.0.54:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos4.4 10.0.0.54:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	
+	server deimos5.1 10.0.0.55:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos5.2 10.0.0.55:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos5.3 10.0.0.55:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos5.4 10.0.0.55:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	
+	srvtimeout 120s
+
+backend auth_zopeservers_test
+	balance leastconn        
+        option httpchk GET /
+
+	server auth1 ldeimos1:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+
+	srvtimeout 120s
+
+backend auth_zopeservers        
+	balance leastconn        
+        option httpchk GET /
+
+	server deimos7.1 10.0.0.57:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos7.2 10.0.0.57:8280 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos7.3 10.0.0.57:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos7.4 10.0.0.57:8480 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos7.5 10.0.0.57:8580 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+        server deimos7.6 10.0.0.57:8680 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+        server deimos7.7 10.0.0.57:8780 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+        server deimos7.8 10.0.0.57:8880 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+    
+	srvtimeout 120s
+
+
+backend quarantine   
+        balance leastconn   
+        option httpchk GET /
+	server deimos1.1 10.0.0.51:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	server deimos4.1 10.0.0.54:8180 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	srvtimeout 120s
+
+backend quarantine_test
+        balance leastconn   
+        option httpchk GET /
+	server quarantine1 ldeimos1:8380 weight 1 check inter 10s rise 2 fall 2 maxconn 1 maxqueue 2 slowstart 80s
+	srvtimeout 120s
+

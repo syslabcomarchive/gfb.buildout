@@ -1,0 +1,5 @@
+${buildout:directory}/parts/smartprint/*.log {
+    postrotate
+        ${buildout:directory}/bin/smartprint restart
+    endscript
+}

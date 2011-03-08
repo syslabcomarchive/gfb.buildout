@@ -1,0 +1,3 @@
+${buildout:directory}/var/log/osha/zeo*.log {
+    copytruncate
+}

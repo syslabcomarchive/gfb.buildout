@@ -1,0 +1,10 @@
+${buildout:directory}/../lms/parts/deployment/var/log/lms/*.log {
+    postrotate
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-zeo reopen_transcript
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-web reopen_transcript
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-checker reopen_transcript
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-scheduler reopen_transcript
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-syncer reopen_transcript
+        ${buildout:directory}/../lms/parts/deployment/etc/init.d/lms-notifier reopen_transcript
+    endscript
+}

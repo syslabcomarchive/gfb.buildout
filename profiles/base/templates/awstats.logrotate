@@ -1,0 +1,5 @@
+${buildout:directory}/../awstatsreport/*.log {
+    postrotate
+        ${buildout:directory}/../awstatsreport/bin/instance restart
+    endscript
+}

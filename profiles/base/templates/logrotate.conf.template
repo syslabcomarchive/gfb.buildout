@@ -1,0 +1,14 @@
+rotate 4
+weekly
+create
+compress
+delaycompress
+
+
+${buildout:directory}/var/log/main*.log {
+    sharedscripts
+    postrotate
+        /bin/kill -USR1 $(cat ${buildout:directory}/var/main.pid)
+    endscript
+}
+

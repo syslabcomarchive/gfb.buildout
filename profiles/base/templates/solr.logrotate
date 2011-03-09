@@ -1,5 +1,0 @@
-${buildout:directory}/var/log/solr*.log {
-    postrotate
-        ${buildout:bin-directory}/solr-instance restart
-    endscript
-}

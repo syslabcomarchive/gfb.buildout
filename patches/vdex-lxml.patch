@@ -1,0 +1,88 @@
+Index: imsvdex/vdex.py
+===================================================================
+--- imsvdex/vdex.py	2010-10-11 22:29:02.156901624 +0200
++++ imsvdex/vdex.py	2010-10-11 22:29:20.877001034 +0200
+@@ -24,10 +24,11 @@
+ from elementtreewriter.xmlwriter import XMLWriter
+ from _odict import OrderedDict
+ 
+-try:
+-    from celementtree.ElementTree import ElementTree
+-except ImportError:
+-    from elementtree.ElementTree import ElementTree
++import lxml.etree
++#try:
++#    from celementtree.ElementTree import ElementTree
++#except ImportError:
++#    from elementtree.ElementTree import ElementTree
+ 
+ VDEX_FLAT_PROFILE_TYPES = ('thesaurus', 'glossaryOrDictionary', 'flatTokenTerms')
+ TRUE_VALUES = ('1', 'true', 'True', 'yes', 'Yes')
+@@ -81,7 +82,7 @@
+         """
+         # this method does not perform a complete schema validation
+ 		# it just checks for a root element named 'vdex' in the expected  namespace
+-        return self.tree._root.tag == self.vdexTag('vdex')
++        return self.tree.getroot().tag == self.vdexTag('vdex')
+ 
+     def parse(self, file):
+         """
+@@ -90,7 +91,7 @@
+         if isinstance(file, StringTypes):
+             file = StringIO(file)
+         try:
+-            self.tree = ElementTree(None, file)
++            self.tree = lxml.etree.parse(file)
+         except ExpatError, e:
+             raise VDEXError, 'Parse error in vocabulary XML: %s' % e
+         try:
+@@ -133,27 +134,27 @@
+         returns the VDEX metadata element(s) for the Vocabulary
+         """
+         xpath = self.vdexTag('metadata')
+-        return self.tree._root.findall(xpath)
++        return self.tree.getroot().findall(xpath)
+ 
+     def getVocabWildcard(self, foreign_ns, tagname):
+         """
+         returns 'wildcard' element(s) (with a foreign namespace) for the Vocabulary
+         """
+         xpath = self.nsTag(foreign_ns, tagname)
+-        return self.tree._root.findall(xpath)
++        return self.tree.getroot().findall(xpath)
+ 
+     def isFlat(self):
+         """
+         returns true if the VDEX profile type denotes a flat vocabulary
+         """ 
+-        vdex = self.tree._root
++        vdex = self.tree.getroot()
+         return vdex.get('profileType') in VDEX_FLAT_PROFILE_TYPES
+ 
+     def isOrderSignificant(self):
+         """
+         returns true if the order of the VDEX vocabulary is significant
+         """ 
+-        vdex = self.tree._root
++        vdex = self.tree.getroot()
+         return vdex.get('orderSignificant') not in FALSE_VALUES
+ 
+     def showLeafsOnly(self):
+@@ -167,7 +168,7 @@
+         returns a vocabulary dictionary (for ArcheTypes) in the given language.
+         If lang is '*', returns dicts of all translations keyed by language
+         """
+-        return self.getTerms(self.tree._root, lang)
++        return self.getTerms(self.tree.getroot(), lang)
+ 
+     def getTerms(self, element, lang=None):
+         """
+@@ -320,7 +321,7 @@
+         """
+         # the .// prefix finds all items recursively
+         xpath = './/' + self.vdexTag('term')
+-        terms = self.tree._root.findall(xpath)
++        terms = self.tree.getroot().findall(xpath)
+         self.term_dict = {}
+         for term in terms:
+             key = self.getTermIdentifier(term)

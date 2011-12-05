@@ -10,10 +10,10 @@ backend default {
 .first_byte_timeout = 300s;
 .connect_timeout = 5s;
 }
-#acl purge {
-#    "localhost";
-#}
-#
+acl purge {
+    "localhost";
+}
+
 #Below is a commented-out copy of the default VCL logic.  If you
 #redefine any of these subroutines, the built-in logic will be
 #appended to your code.
@@ -48,12 +48,12 @@ sub vcl_recv {
     unset req.http.If-Modified-Since;
 
     # allow PURGE from localhost
-#    if (req.request == "PURGE") {
-#	    if (!client.ip ~ purge) {
-#		    error 405 "Not allowed.";
-#	    }
-#	    return (lookup);
-#    }
+    if (req.request == "PURGE") {
+	    if (!client.ip ~ purge) {
+		    error 405 "Not allowed.";
+	    }
+	    return (lookup);
+    }
 
     if (req.request != "GET" &&
       req.request != "HEAD" &&
@@ -112,22 +112,11 @@ sub vcl_hash {
     }
     return (hash);
 }
-#
-#sub vcl_hit {
-#    if (!obj.cacheable) {
-#        return (pass);
-#    }
-#    return (deliver);
-#}
-#
 #sub vcl_hit {
 #        if (req.request == "PURGE") {
 #                purge;
 #                error 200 "Purged.";
 #        }
-#}
-#sub vcl_miss {
-#    return (fetch);
 #}
 #
 #sub vcl_miss {
@@ -136,6 +125,7 @@ sub vcl_hash {
 #                error 200 "Purged.";
 #        }
 #}
+
 #sub vcl_fetch {
 #    if (!obj.cacheable) {
 #        return (pass);

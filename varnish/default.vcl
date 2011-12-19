@@ -112,19 +112,21 @@ sub vcl_hash {
     }
     return (hash);
 }
-#sub vcl_hit {
-#        if (req.request == "PURGE") {
-#                purge;
-#                error 200 "Purged.";
-#        }
-#}
-#
-#sub vcl_miss {
-#        if (req.request == "PURGE") {
-#                purge;
-#                error 200 "Purged.";
-#        }
-#}
+sub vcl_hit {
+        if (req.request == "PURGE") {
+                # Note that setting ttl to 0 is magical.
+                # the object is zapped from cache.
+                set obj.ttl = 0s;
+                error 200 "Purged.";
+        }
+}
+
+sub vcl_miss {
+        if (req.request == "PURGE") {
+
+                error 404 "Not in cache.";
+        }
+}
 
 #sub vcl_fetch {
 #    if (!obj.cacheable) {

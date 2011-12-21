@@ -1,0 +1,12 @@
+#!/bin/sh
+echo "restart all instances"
+bin/supervisorctl restart instance1
+sleep 60
+bin/supervisorctl restart instance2
+sleep 60
+bin/supervisorctl restart instance3
+sleep 60
+bin/supervisorctl restart instance4
+sleep 60
+bin/supervisorctl restart instancebots
+echo "finished"

@@ -1,5 +1,5 @@
 #!/bin/sh
-INTERVAL=60
+INTERVAL=120
 echo "restart all instances and sleep for $INTERVAL seconds in between"
 bin/supervisorctl restart instance1
 sleep $INTERVAL
